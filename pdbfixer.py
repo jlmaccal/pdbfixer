@@ -284,12 +284,14 @@ class PDBFixer(object):
         nonbonded.addInteractionGroup([atom.index for atom in newTopology.atoms() if atom in newAtoms], range(system.getNumParticles()))
 
         # Do an energy minimization.
-
-        integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
-        context = mm.Context(system, integrator)
-        context.setPositions(newPositions)
-        mm.LocalEnergyMinimizer.minimize(context)
-        state = context.getState(getPositions=True)
+        # But, only if we added new atoms
+        if missingAtoms:
+            integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+            context = mm.Context(system, integrator)
+            context.setPositions(newPositions)
+            mm.LocalEnergyMinimizer.minimize(context)
+            state = context.getState(getPositions=True)
+            newPositions = state.getPositions()
 
         # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
 
@@ -298,7 +300,7 @@ class PDBFixer(object):
         # Copy over the minimized positions for the new atoms.
 
         for a1, a2 in zip(newAtoms, newAtoms2):
-            newPositions2[a2.index] = state.getPositions()[a1.index]
+            newPositions2[a2.index] = newPositions[a1.index]
         app.PDBFile.writeFile(newTopology2, newPositions2, open('output.pdb', 'w'))
 
 
